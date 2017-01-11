@@ -20,12 +20,7 @@ _cgo_export.*
 _testmain.go
 
 *.exe
-*.test
-*.prof
 
-
-*.swp
-
-# binaries
-namenode_exporter
-resourcemanager_exporter
+*~
+*#
+.build
