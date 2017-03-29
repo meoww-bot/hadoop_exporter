@@ -23,6 +23,7 @@ var (
 type Exporter struct {
 	url                      string
 	MissingBlocks            prometheus.Gauge
+	UnderReplicatedBlocks    prometheus.Gauge
 	CapacityTotal            prometheus.Gauge
 	CapacityUsed             prometheus.Gauge
 	CapacityRemaining        prometheus.Gauge
@@ -51,6 +52,11 @@ func NewExporter(url string) *Exporter {
 			Namespace: namespace,
 			Name:      "MissingBlocks",
 			Help:      "MissingBlocks",
+		}),
+		UnderReplicatedBlocks: prometheus.NewGauge(prometheus.GaugeOpts{
+			Namespace: namespace,
+			Name:      "UnderReplicatedBlocks",
+			Help:      "UnderReplicatedBlocks",
 		}),
 		CapacityTotal: prometheus.NewGauge(prometheus.GaugeOpts{
 			Namespace: namespace,
@@ -153,6 +159,7 @@ func NewExporter(url string) *Exporter {
 // Describe implements the prometheus.Collector interface.
 func (e *Exporter) Describe(ch chan<- *prometheus.Desc) {
 	e.MissingBlocks.Describe(ch)
+	e.UnderReplicatedBlocks.Describe(ch)
 	e.CapacityTotal.Describe(ch)
 	e.CapacityUsed.Describe(ch)
 	e.CapacityRemaining.Describe(ch)
@@ -197,52 +204,53 @@ func (e *Exporter) Collect(ch chan<- prometheus.Metric) {
 	for _, nameData := range nameList {
 		nameDataMap := nameData.(map[string]interface{})
 		/*
-			{
-				"name" : "Hadoop:service=NameNode,name=FSNamesystem",
-				"modelerType" : "FSNamesystem",
-				"tag.Context" : "dfs",
-				"tag.HAState" : "active",
-				"tag.TotalSyncTimes" : "23 6 ",
-				"tag.Hostname" : "CNHORTO7502.line.ism",
-				"MissingBlocks" : 0,
-				"MissingReplOneBlocks" : 0,
-				"ExpiredHeartbeats" : 0,
-				"TransactionsSinceLastCheckpoint" : 2007,
-				"TransactionsSinceLastLogRoll" : 7,
-				"LastWrittenTransactionId" : 172706,
-				"LastCheckpointTime" : 1456089173101,
-				"CapacityTotal" : 307099828224,
-				"CapacityTotalGB" : 286.0,
-				"CapacityUsed" : 1471291392,
-				"CapacityUsedGB" : 1.0,
-				"CapacityRemaining" : 279994568704,
-				"CapacityRemainingGB" : 261.0,
-				"CapacityUsedNonDFS" : 25633968128,
-				"TotalLoad" : 6,
-				"SnapshottableDirectories" : 0,
-				"Snapshots" : 0,
-				"LockQueueLength" : 0,
-				"BlocksTotal" : 67,
-				"NumFilesUnderConstruction" : 0,
-				"NumActiveClients" : 0,
-				"FilesTotal" : 184,
-				"PendingReplicationBlocks" : 0,
-				"UnderReplicatedBlocks" : 0,
-				"CorruptBlocks" : 0,
-				"ScheduledReplicationBlocks" : 0,
-				"PendingDeletionBlocks" : 0,
-				"ExcessBlocks" : 0,
-				"PostponedMisreplicatedBlocks" : 0,
-				"PendingDataNodeMessageCount" : 0,
-				"MillisSinceLastLoadedEdits" : 0,
-				"BlockCapacity" : 2097152,
-				"StaleDataNodes" : 0,
-				"TotalFiles" : 184,
-				"TotalSyncCount" : 7
-			}
+		   {
+		       "name" : "Hadoop:service=NameNode,name=FSNamesystem",
+		       "modelerType" : "FSNamesystem",
+		       "tag.Context" : "dfs",
+		       "tag.HAState" : "active",
+		       "tag.TotalSyncTimes" : "23 6 ",
+		       "tag.Hostname" : "CNHORTO7502.line.ism",
+		       "MissingBlocks" : 0,
+		       "MissingReplOneBlocks" : 0,
+		       "ExpiredHeartbeats" : 0,
+		       "TransactionsSinceLastCheckpoint" : 2007,
+		       "TransactionsSinceLastLogRoll" : 7,
+		       "LastWrittenTransactionId" : 172706,
+		       "LastCheckpointTime" : 1456089173101,
+		       "CapacityTotal" : 307099828224,
+		       "CapacityTotalGB" : 286.0,
+		       "CapacityUsed" : 1471291392,
+		       "CapacityUsedGB" : 1.0,
+		       "CapacityRemaining" : 279994568704,
+		       "CapacityRemainingGB" : 261.0,
+		       "CapacityUsedNonDFS" : 25633968128,
+		       "TotalLoad" : 6,
+		       "SnapshottableDirectories" : 0,
+		       "Snapshots" : 0,
+		       "LockQueueLength" : 0,
+		       "BlocksTotal" : 67,
+		       "NumFilesUnderConstruction" : 0,
+		       "NumActiveClients" : 0,
+		       "FilesTotal" : 184,
+		       "PendingReplicationBlocks" : 0,
+		       "UnderReplicatedBlocks" : 0,
+		       "CorruptBlocks" : 0,
+		       "ScheduledReplicationBlocks" : 0,
+		       "PendingDeletionBlocks" : 0,
+		       "ExcessBlocks" : 0,
+		       "PostponedMisreplicatedBlocks" : 0,
+		       "PendingDataNodeMessageCount" : 0,
+		       "MillisSinceLastLoadedEdits" : 0,
+		       "BlockCapacity" : 2097152,
+		       "StaleDataNodes" : 0,
+		       "TotalFiles" : 184,
+		       "TotalSyncCount" : 7
+		   }
 		*/
 		if nameDataMap["name"] == "Hadoop:service=NameNode,name=FSNamesystem" {
 			e.MissingBlocks.Set(nameDataMap["MissingBlocks"].(float64))
+			e.UnderReplicatedBlocks.Set(nameDataMap["UnderReplicatedBlocks"].(float64))
 			e.CapacityTotal.Set(nameDataMap["CapacityTotal"].(float64))
 			e.CapacityUsed.Set(nameDataMap["CapacityUsed"].(float64))
 			e.CapacityRemaining.Set(nameDataMap["CapacityRemaining"].(float64))
@@ -254,15 +262,15 @@ func (e *Exporter) Collect(ch chan<- prometheus.Metric) {
 			e.StaleDataNodes.Set(nameDataMap["StaleDataNodes"].(float64))
 		}
 		/*
-			{
-				"name" : "Hadoop:service=NameNode,name=NameNodeStatus",
-				"modelerType" : "org.apache.hadoop.hdfs.server.namenode.NameNode",
-				"SecurityEnabled" : false,
-				"NNRole" : "NameNode",
-				"HostAndPort" : "namenode1.hdfs.tamr:50071",
-				"LastHATransitionTime" : 1484149009998,
-				"State" : "active"
-			}
+		   {
+		       "name" : "Hadoop:service=NameNode,name=NameNodeStatus",
+		       "modelerType" : "org.apache.hadoop.hdfs.server.namenode.NameNode",
+		       "SecurityEnabled" : false,
+		       "NNRole" : "NameNode",
+		       "HostAndPort" : "namenode1.hdfs.tamr:50071",
+		       "LastHATransitionTime" : 1484149009998,
+		       "State" : "active"
+		   }
 		*/
 		if nameDataMap["name"] == "Hadoop:service=NameNode,name=NameNodeStatus" {
 			if nameDataMap["State"] == "active" {
@@ -281,14 +289,14 @@ func (e *Exporter) Collect(ch chan<- prometheus.Metric) {
 			e.cmsGcTime.Set(nameDataMap["CollectionTime"].(float64))
 		}
 		/*
-			"name" : "java.lang:type=Memory",
-			"modelerType" : "sun.management.MemoryImpl",
-			"HeapMemoryUsage" : {
-				"committed" : 1060372480,
-				"init" : 1073741824,
-				"max" : 1060372480,
-				"used" : 124571464
-			},
+		   "name" : "java.lang:type=Memory",
+		   "modelerType" : "sun.management.MemoryImpl",
+		   "HeapMemoryUsage" : {
+		       "committed" : 1060372480,
+		       "init" : 1073741824,
+		       "max" : 1060372480,
+		       "used" : 124571464
+		   },
 		*/
 		if nameDataMap["name"] == "java.lang:type=Memory" {
 			heapMemoryUsage := nameDataMap["HeapMemoryUsage"].(map[string]interface{})
@@ -299,6 +307,7 @@ func (e *Exporter) Collect(ch chan<- prometheus.Metric) {
 		}
 	}
 	e.MissingBlocks.Collect(ch)
+	e.UnderReplicatedBlocks.Collect(ch)
 	e.CapacityTotal.Collect(ch)
 	e.CapacityUsed.Collect(ch)
 	e.CapacityRemaining.Collect(ch)
@@ -330,12 +339,12 @@ func main() {
 	http.Handle(*metricsPath, prometheus.Handler())
 	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 		w.Write([]byte(`<html>
-		<head><title>NameNode Exporter</title></head>
-		<body>
-		<h1>NameNode Exporter</h1>
-		<p><a href="` + *metricsPath + `">Metrics</a></p>
-		</body>
-		</html>`))
+        <head><title>NameNode Exporter</title></head>
+        <body>
+        <h1>NameNode Exporter</h1>
+        <p><a href="` + *metricsPath + `">Metrics</a></p>
+        </body>
+        </html>`))
 	})
 	err := http.ListenAndServe(*listenAddress, nil)
 	if err != nil {

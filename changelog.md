@@ -1,4 +1,7 @@
-# Version 0.2.o - Jan 11th 2017
+# Version 0.2.1 - Jan 11th 2017
+* added under replicated blocks exporter
+
+# Version 0.2.0 - Jan 11th 2017
 * added barebone program for journalnode
 * updated makefile
 * changed dir structure of the project
