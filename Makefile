@@ -3,8 +3,8 @@ SHELL := /bin/bash
 REV := $(shell git rev-parse HEAD)
 CHANGES := $(shell test -n "$$(git status --porcelain)" && echo '-CHANGES' || true)
 VERSION := $(shell )
-DOCKER_REPO := quay.io/tamr/prom
-DOCKER_TAG := $(shell cat ./version)
+DOCKER_REPO := quay.io/tamr/hdfs_exporter
+DOCKER_TAG := $(shell cat ./VERSION)
 
 
 .PHONY: \
@@ -14,7 +14,9 @@ DOCKER_TAG := $(shell cat ./version)
 	test \
 	vet \
 	lint \
-	fmt \
+	build-namenode \
+	build-resourcemanager \
+	build-journalnode \
 	build
 
 all: fmt vet build
@@ -39,12 +41,17 @@ lint:
 style:
 	gofmt -d ./
 
-fmt:
-	go fmt ./
+build-namenode: deps
+	go build -o bin/namenode_exporter ./namenode/namenode_exporter.go
 
-build: fmt deps
-	go build namenode/namenode_exporter.go
-	go build resourcemanager/resourcemanager_exporter.go
+build-resourcemanager: deps
+	go build -o bin/resourcemanager_exporter ./resourcemanager/resourcemanager_exporter.go
+
+build-journalnode: deps
+	go build -o bin/journalnode_exporter ./journalnode/journalnode_exporter.go
+
+build: build-namenode build-resourcemanager build-journalnode
 
 docker-build:
+	echo "docker build tag: $(DOCKER_REPO):$(DOCKER_TAG)$(CHANGES)"
 	docker build -t $(DOCKER_REPO):$(DOCKER_TAG)$(CHANGES) .
