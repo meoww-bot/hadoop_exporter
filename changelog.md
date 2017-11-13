@@ -1,3 +1,6 @@
+# Version 0.3.0 - Oct 17th 2017
+* Added Datanode exporter
+
 # Version 0.2.1 - Jan 11th 2017
 * added under replicated blocks exporter
 

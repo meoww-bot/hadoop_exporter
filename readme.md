@@ -18,6 +18,16 @@ Help on flags of namenode_exporter:
     Path under which to expose metrics. (default "/metrics")
 ```
 
+Help on flags of datanode_exporter:
+```
+-datanode.jmx.url string
+    Hadoop JMX URL. (default "http://localhost:50075/jmx")
+-web.listen-address string
+    Address on which to expose metrics and web interface. (default ":9070")
+-web.telemetry-path string
+    Path under which to expose metrics. (default "/metrics")
+```
+
 Help on flags of resourcemanager_exporter:
 ```
 -resourcemanager.url string

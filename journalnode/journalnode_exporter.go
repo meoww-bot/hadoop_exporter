@@ -15,9 +15,9 @@ const (
 )
 
 var (
-	listenAddress     = flag.String("web.listen-address", ":9070", "Address on which to expose metrics and web interface.")
+	listenAddress     = flag.String("web.listen-address", ":9071", "Address on which to expose metrics and web interface.")
 	metricsPath       = flag.String("web.telemetry-path", "/metrics", "Path under which to expose metrics.")
-	journalnodeJmxUrl = flag.String("journalnode.jmx.url", "http://localhost:50070/jmx", "Hadoop JMX URL.")
+	journalnodeJmxUrl = flag.String("journalnode.jmx.url", "http://localhost:8480/jmx", "Hadoop JMX URL.")
 )
 
 type Exporter struct {

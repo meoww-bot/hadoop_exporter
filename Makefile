@@ -53,7 +53,11 @@ build-journalnode: deps
 	go fmt ./journalnode
 	go build -o bin/journalnode_exporter ./journalnode/journalnode_exporter.go
 
-build: build-namenode build-resourcemanager build-journalnode
+build-datanode: deps
+	go fmt ./datanode
+	go build -o bin/datanode_exporter ./datanode/datanode_exporter.go
+
+build: build-namenode build-resourcemanager build-journalnode build-datanode
 
 docker-build:
 	echo "docker build tag: $(DOCKER_REPO):$(DOCKER_TAG)$(CHANGES)"
