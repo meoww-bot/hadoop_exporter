@@ -1,3 +1,7 @@
+# Version 0.4.0 - Apr 16th 2018
+* Added Datanode to dockerfile
+* upgraded to golang 1.8.3 (latest)
+
 # Version 0.3.0 - Oct 17th 2017
 * Added Datanode exporter
 
