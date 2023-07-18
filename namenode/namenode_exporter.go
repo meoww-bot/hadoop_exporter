@@ -3,10 +3,13 @@ package main
 import (
 	"encoding/json"
 	"flag"
+	"fmt"
 	"io"
 	"net/http"
+	"os"
 	"strings"
 
+	"github.com/meoww-bot/hadoop_exporter/lib"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/prometheus/log"
@@ -20,10 +23,14 @@ var (
 	listenAddress  = flag.String("web.listen-address", ":9070", "Address on which to expose metrics and web interface.")
 	metricsPath    = flag.String("web.telemetry-path", "/metrics", "Path under which to expose metrics.")
 	namenodeJmxUrl = flag.String("namenode.jmx.url", "http://nn01.example.com:50070/jmx", "Hadoop JMX URL.")
+	keytabPath     = flag.String("krb5.keytabpath", "", "Kerberos keytab file path")
+	principal      = flag.String("krb5.principal", "", "Principal (admin@EXAMPLE.COM)")
 )
 
 type Exporter struct {
 	url                   string
+	keytabPath            string
+	principal             string
 	MissingBlocks         prometheus.Gauge
 	UnderReplicatedBlocks prometheus.Gauge
 	Capacity              *prometheus.GaugeVec
@@ -45,10 +52,12 @@ type Exporter struct {
 	RpcCallQueueLength    *prometheus.GaugeVec
 }
 
-func NewExporter(url string) *Exporter {
+func NewExporter(url string, keytabPath string, principal string) *Exporter {
 
 	return &Exporter{
-		url: url,
+		url:        url,
+		keytabPath: keytabPath,
+		principal:  principal,
 		MissingBlocks: prometheus.NewGauge(prometheus.GaugeOpts{
 			Namespace: namespace,
 			Subsystem: "fsname_system",
@@ -193,19 +202,35 @@ func (e *Exporter) Describe(ch chan<- *prometheus.Desc) {
 
 // Collect implements the prometheus.Collector interface.
 func (e *Exporter) Collect(ch chan<- prometheus.Metric) {
-	resp, err := http.Get(e.url)
-	if err != nil {
-		log.Error(err)
-	}
-	defer resp.Body.Close()
-	data, err := io.ReadAll(resp.Body)
-	if err != nil {
-		log.Error(err)
+
+	var data []byte
+	var err error
+
+	if e.keytabPath != "" {
+		data = lib.MakeKrb5RequestWithKeytab(e.keytabPath, e.principal, e.url)
+
+	} else {
+
+		resp, err := http.Get(e.url)
+		if err != nil {
+			log.Error(err)
+		}
+		defer resp.Body.Close()
+
+		if resp.StatusCode == http.StatusUnauthorized {
+			log.Error("HTTP status 401 Unauthorized")
+			os.Exit(-1)
+		}
+		data, err = io.ReadAll(resp.Body)
+		if err != nil {
+			log.Error(err)
+		}
 	}
 	var f interface{}
 	err = json.Unmarshal(data, &f)
 	if err != nil {
 		log.Error(err)
+		fmt.Println(data)
 	}
 	// {"beans":[{"name":"Hadoop:service=NameNode,name=FSNamesystem", ...}, {"name":"java.lang:type=MemoryPool,name=Code Cache", ...}, ...]}
 	m := f.(map[string]interface{})
@@ -424,7 +449,7 @@ func main() {
 
 	flag.Parse()
 
-	exporter := NewExporter(*namenodeJmxUrl)
+	exporter := NewExporter(*namenodeJmxUrl, *keytabPath, *principal)
 	prometheus.MustRegister(exporter)
 
 	log.Printf("Starting Server: %s", *listenAddress)

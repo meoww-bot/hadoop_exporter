@@ -17,8 +17,12 @@ make build-datanode
 
 Help on flags of namenode_exporter:
 ```
+-krb5.keytabpath string
+    	Kerberos keytab file path
+-krb5.principal string
+    	Principal (admin@EXAMPLE.COM)
 -namenode.jmx.url string
-    Hadoop JMX URL. (default "http://localhost:50070/jmx")
+    Hadoop JMX URL. (default "http://nn01.example.com:50070/jmx")
 -web.listen-address string
     Address on which to expose metrics and web interface. (default ":9070")
 -web.telemetry-path string
