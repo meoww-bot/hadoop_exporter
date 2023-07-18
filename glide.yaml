@@ -1,7 +1,0 @@
-package: Datatamer/hadoop_exporter
-import:
-- package: github.com/prometheus/client_golang
-  version: v0.8.0
-  subpackages:
-  - prometheus
-- package: github.com/prometheus/log

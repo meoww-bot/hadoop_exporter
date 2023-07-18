@@ -9,8 +9,6 @@ DOCKER_TAG := $(shell cat ./VERSION)
 
 .PHONY: \
 	clean \
-	clean-vendor \
-	deps \
 	test \
 	vet \
 	lint \
@@ -21,15 +19,7 @@ DOCKER_TAG := $(shell cat ./VERSION)
 
 all: fmt vet build
 
-clean-vendor:
-	rm -rf ./vedor/
-
-clean: clean-vendor
-
-deps:
-	glide install
-
-test: deps
+test:
 	go test -v ./
 
 vet:
@@ -41,21 +31,21 @@ lint:
 style:
 	gofmt -d ./
 
-build-namenode: deps
+build-namenode:
 	go fmt ./namenode
-	go build -o bin/namenode_exporter ./namenode/namenode_exporter.go
+	CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -ldflags="-s -w" -o bin/namenode_exporter ./namenode/namenode_exporter.go
 
-build-resourcemanager: deps
+build-resourcemanager:
 	go fmt ./resourcemanager
-	go build -o bin/resourcemanager_exporter ./resourcemanager/resourcemanager_exporter.go
+	CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -ldflags="-s -w" -o bin/resourcemanager_exporter ./resourcemanager/resourcemanager_exporter.go
 
-build-journalnode: deps
+build-journalnode:
 	go fmt ./journalnode
-	go build -o bin/journalnode_exporter ./journalnode/journalnode_exporter.go
+	CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -ldflags="-s -w" -o bin/journalnode_exporter ./journalnode/journalnode_exporter.go
 
-build-datanode: deps
+build-datanode:
 	go fmt ./datanode
-	go build -o bin/datanode_exporter ./datanode/datanode_exporter.go
+	CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -ldflags="-s -w" -o bin/datanode_exporter ./datanode/datanode_exporter.go
 
 build: build-namenode build-resourcemanager build-journalnode build-datanode
 
