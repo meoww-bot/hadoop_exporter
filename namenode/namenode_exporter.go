@@ -355,7 +355,7 @@ func (e *Exporter) Collect(ch chan<- prometheus.Metric) {
 		*/
 		if nameDataMap["name"] == "java.lang:type=Memory" {
 			heapMemoryUsage := nameDataMap["HeapMemoryUsage"].(map[string]interface{})
-			e.heapMemoryUsage.WithLabelValues("HeapMemoryUsage").Set(heapMemoryUsage["committed"].(float64))
+			e.heapMemoryUsage.WithLabelValues("committed").Set(heapMemoryUsage["committed"].(float64))
 			e.heapMemoryUsage.WithLabelValues("init").Set(heapMemoryUsage["init"].(float64))
 			e.heapMemoryUsage.WithLabelValues("max").Set(heapMemoryUsage["max"].(float64))
 			e.heapMemoryUsage.WithLabelValues("used").Set(heapMemoryUsage["used"].(float64))
