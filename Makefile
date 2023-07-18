@@ -33,19 +33,19 @@ style:
 
 build-namenode:
 	go fmt ./namenode
-	CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -ldflags="-s -w" -o bin/namenode_exporter ./namenode/namenode_exporter.go
+	CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -trimpath -o bin/namenode_exporter ./namenode/namenode_exporter.go
 
 build-resourcemanager:
 	go fmt ./resourcemanager
-	CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -ldflags="-s -w" -o bin/resourcemanager_exporter ./resourcemanager/resourcemanager_exporter.go
+	CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -trimpath -o bin/resourcemanager_exporter ./resourcemanager/resourcemanager_exporter.go
 
 build-journalnode:
 	go fmt ./journalnode
-	CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -ldflags="-s -w" -o bin/journalnode_exporter ./journalnode/journalnode_exporter.go
+	CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -trimpath -o bin/journalnode_exporter ./journalnode/journalnode_exporter.go
 
 build-datanode:
 	go fmt ./datanode
-	CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -ldflags="-s -w" -o bin/datanode_exporter ./datanode/datanode_exporter.go
+	CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -trimpath -o bin/datanode_exporter ./datanode/datanode_exporter.go
 
 build: build-namenode build-resourcemanager build-journalnode build-datanode
 
