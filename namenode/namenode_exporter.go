@@ -3,156 +3,168 @@ package main
 import (
 	"encoding/json"
 	"flag"
-	"io/ioutil"
+	"io"
 	"net/http"
+	"strings"
 
 	"github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/prometheus/log"
 )
 
 const (
-	namespace = "namenode"
+	namespace = "hadoop_hdfs_namenode"
 )
 
 var (
 	listenAddress  = flag.String("web.listen-address", ":9070", "Address on which to expose metrics and web interface.")
 	metricsPath    = flag.String("web.telemetry-path", "/metrics", "Path under which to expose metrics.")
-	namenodeJmxUrl = flag.String("namenode.jmx.url", "http://localhost:50070/jmx", "Hadoop JMX URL.")
+	namenodeJmxUrl = flag.String("namenode.jmx.url", "http://nn01.example.com:50070/jmx", "Hadoop JMX URL.")
 )
 
 type Exporter struct {
-	url                      string
-	MissingBlocks            prometheus.Gauge
-	UnderReplicatedBlocks    prometheus.Gauge
-	CapacityTotal            prometheus.Gauge
-	CapacityUsed             prometheus.Gauge
-	CapacityRemaining        prometheus.Gauge
-	CapacityUsedNonDFS       prometheus.Gauge
-	BlocksTotal              prometheus.Gauge
-	FilesTotal               prometheus.Gauge
-	CorruptBlocks            prometheus.Gauge
-	ExcessBlocks             prometheus.Gauge
-	StaleDataNodes           prometheus.Gauge
-	pnGcCount                prometheus.Gauge
-	pnGcTime                 prometheus.Gauge
-	cmsGcCount               prometheus.Gauge
-	cmsGcTime                prometheus.Gauge
-	heapMemoryUsageCommitted prometheus.Gauge
-	heapMemoryUsageInit      prometheus.Gauge
-	heapMemoryUsageMax       prometheus.Gauge
-	heapMemoryUsageUsed      prometheus.Gauge
-	lastHATransitionTime     prometheus.Gauge
-	state                    prometheus.Gauge
+	url                   string
+	MissingBlocks         prometheus.Gauge
+	UnderReplicatedBlocks prometheus.Gauge
+	Capacity              *prometheus.GaugeVec
+	BlocksTotal           prometheus.Gauge
+	FilesTotal            prometheus.Gauge
+	CorruptBlocks         prometheus.Gauge
+	ExcessBlocks          prometheus.Gauge
+	StaleDataNodes        prometheus.Gauge
+	GcCount               *prometheus.GaugeVec
+	GcTime                *prometheus.GaugeVec
+	heapMemoryUsage       *prometheus.GaugeVec
+	lastHATransitionTime  prometheus.Gauge
+	HAState               prometheus.Gauge
+	RpcReceivedBytes      *prometheus.GaugeVec
+	RpcSentBytes          *prometheus.GaugeVec
+	RpcQueueTimeNumOps    *prometheus.GaugeVec // RpcProcessingTimeNumOps = RpcQueueTimeNumOps
+	RpcAvgTime            *prometheus.GaugeVec
+	RpcNumOpenConnections *prometheus.GaugeVec // current number of open connections
+	RpcCallQueueLength    *prometheus.GaugeVec
 }
 
 func NewExporter(url string) *Exporter {
+
 	return &Exporter{
 		url: url,
 		MissingBlocks: prometheus.NewGauge(prometheus.GaugeOpts{
 			Namespace: namespace,
-			Name:      "MissingBlocks",
-			Help:      "MissingBlocks",
+			Subsystem: "fsname_system",
+			Name:      "missing_blocks",
+			Help:      "Current number of missing blocks",
 		}),
 		UnderReplicatedBlocks: prometheus.NewGauge(prometheus.GaugeOpts{
 			Namespace: namespace,
-			Name:      "UnderReplicatedBlocks",
-			Help:      "UnderReplicatedBlocks",
+			Subsystem: "fsname_system",
+			Name:      "under_replicated_blocks",
+			Help:      "Current number of blocks under replicated",
 		}),
-		CapacityTotal: prometheus.NewGauge(prometheus.GaugeOpts{
+		Capacity: prometheus.NewGaugeVec(prometheus.GaugeOpts{
 			Namespace: namespace,
-			Name:      "CapacityTotal",
-			Help:      "CapacityTotal",
-		}),
-		CapacityUsed: prometheus.NewGauge(prometheus.GaugeOpts{
-			Namespace: namespace,
-			Name:      "CapacityUsed",
-			Help:      "CapacityUsed",
-		}),
-		CapacityRemaining: prometheus.NewGauge(prometheus.GaugeOpts{
-			Namespace: namespace,
-			Name:      "CapacityRemaining",
-			Help:      "CapacityRemaining",
-		}),
-		CapacityUsedNonDFS: prometheus.NewGauge(prometheus.GaugeOpts{
-			Namespace: namespace,
-			Name:      "CapacityUsedNonDFS",
-			Help:      "CapacityUsedNonDFS",
-		}),
+			Subsystem: "fsname_system",
+			Name:      "capacity_bytes",
+			Help:      "Current DataNodes capacity in each mode in bytes",
+		}, []string{"mode"}),
 		BlocksTotal: prometheus.NewGauge(prometheus.GaugeOpts{
 			Namespace: namespace,
-			Name:      "BlocksTotal",
-			Help:      "BlocksTotal",
+			Subsystem: "fsname_system",
+			Name:      "blocks_total",
+			Help:      "Current number of allocated blocks in the system",
 		}),
 		FilesTotal: prometheus.NewGauge(prometheus.GaugeOpts{
 			Namespace: namespace,
-			Name:      "FilesTotal",
-			Help:      "FilesTotal",
+			Subsystem: "fsname_system",
+			Name:      "files_total",
+			Help:      "Current number of files and directories",
 		}),
 		CorruptBlocks: prometheus.NewGauge(prometheus.GaugeOpts{
 			Namespace: namespace,
-			Name:      "CorruptBlocks",
-			Help:      "CorruptBlocks",
+			Subsystem: "fsname_system",
+			Name:      "corrupt_blocks",
+			Help:      "Current number of blocks with corrupt replicas",
 		}),
 		ExcessBlocks: prometheus.NewGauge(prometheus.GaugeOpts{
 			Namespace: namespace,
-			Name:      "ExcessBlocks",
-			Help:      "ExcessBlocks",
+			Subsystem: "fsname_system",
+			Name:      "excess_blocks",
+			Help:      "Current number of excess blocks",
 		}),
 		StaleDataNodes: prometheus.NewGauge(prometheus.GaugeOpts{
 			Namespace: namespace,
-			Name:      "StaleDataNodes",
-			Help:      "StaleDataNodes",
+			Subsystem: "fsname_system",
+			Name:      "stale_datanodes",
+			Help:      "Current number of DataNodes marked stale due to delayed heartbeat",
 		}),
-		pnGcCount: prometheus.NewGauge(prometheus.GaugeOpts{
+		GcCount: prometheus.NewGaugeVec(prometheus.GaugeOpts{
 			Namespace: namespace,
-			Name:      "ParNew_CollectionCount",
-			Help:      "ParNew GC Count",
-		}),
-		pnGcTime: prometheus.NewGauge(prometheus.GaugeOpts{
+			Subsystem: "jvm",
+			Name:      "gc_count",
+			Help:      "GC count of each type",
+		}, []string{"type"}),
+		GcTime: prometheus.NewGaugeVec(prometheus.GaugeOpts{
 			Namespace: namespace,
-			Name:      "ParNew_CollectionTime",
-			Help:      "ParNew GC Time",
-		}),
-		cmsGcCount: prometheus.NewGauge(prometheus.GaugeOpts{
+			Subsystem: "jvm",
+			Name:      "gc_time_milliseconds",
+			Help:      "GC time of each type in milliseconds",
+		}, []string{"type"}),
+		heapMemoryUsage: prometheus.NewGaugeVec(prometheus.GaugeOpts{
 			Namespace: namespace,
-			Name:      "ConcurrentMarkSweep_CollectionCount",
-			Help:      "ConcurrentMarkSweep GC Count",
-		}),
-		cmsGcTime: prometheus.NewGauge(prometheus.GaugeOpts{
-			Namespace: namespace,
-			Name:      "ConcurrentMarkSweep_CollectionTime",
-			Help:      "ConcurrentMarkSweep GC Time",
-		}),
-		heapMemoryUsageCommitted: prometheus.NewGauge(prometheus.GaugeOpts{
-			Namespace: namespace,
-			Name:      "heapMemoryUsageCommitted",
-			Help:      "heapMemoryUsageCommitted",
-		}),
-		heapMemoryUsageInit: prometheus.NewGauge(prometheus.GaugeOpts{
-			Namespace: namespace,
-			Name:      "heapMemoryUsageInit",
-			Help:      "heapMemoryUsageInit",
-		}),
-		heapMemoryUsageMax: prometheus.NewGauge(prometheus.GaugeOpts{
-			Namespace: namespace,
-			Name:      "heapMemoryUsageMax",
-			Help:      "heapMemoryUsageMax",
-		}),
-		heapMemoryUsageUsed: prometheus.NewGauge(prometheus.GaugeOpts{
-			Namespace: namespace,
-			Name:      "heapMemoryUsageUsed",
-			Help:      "heapMemoryUsageUsed",
-		}),
+			Subsystem: "mem",
+			Name:      "committed_bytes",
+			Help:      "Current heap memory of each mode in bytes",
+		}, []string{"mode"}),
 		lastHATransitionTime: prometheus.NewGauge(prometheus.GaugeOpts{
 			Namespace: namespace,
-			Name:      "lastHATransitionTime",
+			Subsystem: "namenode_status",
+			Name:      "last_ha_transition_time",
 			Help:      "last HA Transition Time",
 		}),
-		state: prometheus.NewGauge(prometheus.GaugeOpts{
+		HAState: prometheus.NewGauge(prometheus.GaugeOpts{
 			Namespace: namespace,
-			Name:      "state",
-			Help:      "Current namenode state, 1 if active 0 if standby",
+			Subsystem: "fsname_system",
+			Name:      "hastate",
+			Help:      "Current state of the NameNode: 0.0 (for initializing) or 1.0 (for active) or 2.0 (for standby) or 3.0 (for stopping) state",
 		}),
+		// RpcActivityForPort8020
+		// RpcActivityForPort8060
+		RpcReceivedBytes: prometheus.NewGaugeVec(prometheus.GaugeOpts{
+			Namespace: namespace,
+			Subsystem: "rpc",
+			Name:      "received_bytes",
+			Help:      "Total number of received bytes",
+		}, []string{"port"}),
+		RpcSentBytes: prometheus.NewGaugeVec(prometheus.GaugeOpts{
+			Namespace: namespace,
+			Subsystem: "rpc",
+			Name:      "sent_bytes",
+			Help:      "Total number of sent bytes",
+		}, []string{"port"}),
+		RpcQueueTimeNumOps: prometheus.NewGaugeVec(prometheus.GaugeOpts{
+			Namespace: namespace,
+			Subsystem: "rpc",
+			Name:      "call_count",
+			Help:      "Total number of RPC calls (same to RpcQueueTimeNumOps) ",
+		}, []string{"port", "method"}),
+		RpcAvgTime: prometheus.NewGaugeVec(prometheus.GaugeOpts{
+			Namespace: namespace,
+			Subsystem: "rpc",
+			Name:      "avg_time_milliseconds",
+			Help:      "current number of open connections",
+		}, []string{"port", "method"}),
+		RpcNumOpenConnections: prometheus.NewGaugeVec(prometheus.GaugeOpts{
+			Namespace: namespace,
+			Subsystem: "rpc",
+			Name:      "open_connections_count",
+			Help:      "current number of open connections",
+		}, []string{"port"}),
+		RpcCallQueueLength: prometheus.NewGaugeVec(prometheus.GaugeOpts{
+			Namespace: namespace,
+			Subsystem: "rpc",
+			Name:      "call_queue_length",
+			Help:      "Current length of the call queue",
+		}, []string{"port"}),
 	}
 }
 
@@ -160,25 +172,23 @@ func NewExporter(url string) *Exporter {
 func (e *Exporter) Describe(ch chan<- *prometheus.Desc) {
 	e.MissingBlocks.Describe(ch)
 	e.UnderReplicatedBlocks.Describe(ch)
-	e.CapacityTotal.Describe(ch)
-	e.CapacityUsed.Describe(ch)
-	e.CapacityRemaining.Describe(ch)
-	e.CapacityUsedNonDFS.Describe(ch)
+	e.Capacity.Describe(ch)
 	e.BlocksTotal.Describe(ch)
 	e.FilesTotal.Describe(ch)
 	e.CorruptBlocks.Describe(ch)
 	e.ExcessBlocks.Describe(ch)
 	e.StaleDataNodes.Describe(ch)
-	e.pnGcCount.Describe(ch)
-	e.pnGcTime.Describe(ch)
-	e.cmsGcCount.Describe(ch)
-	e.cmsGcTime.Describe(ch)
-	e.heapMemoryUsageCommitted.Describe(ch)
-	e.heapMemoryUsageInit.Describe(ch)
-	e.heapMemoryUsageMax.Describe(ch)
-	e.heapMemoryUsageUsed.Describe(ch)
+	e.GcCount.Describe(ch)
+	e.GcTime.Describe(ch)
+	e.heapMemoryUsage.Describe(ch)
 	e.lastHATransitionTime.Describe(ch)
-	e.state.Describe(ch)
+	e.HAState.Describe(ch)
+	e.RpcReceivedBytes.Describe(ch)
+	e.RpcSentBytes.Describe(ch)
+	e.RpcQueueTimeNumOps.Describe(ch)
+	e.RpcAvgTime.Describe(ch)
+	e.RpcNumOpenConnections.Describe(ch)
+	e.RpcCallQueueLength.Describe(ch)
 }
 
 // Collect implements the prometheus.Collector interface.
@@ -188,7 +198,7 @@ func (e *Exporter) Collect(ch chan<- prometheus.Metric) {
 		log.Error(err)
 	}
 	defer resp.Body.Close()
-	data, err := ioutil.ReadAll(resp.Body)
+	data, err := io.ReadAll(resp.Body)
 	if err != nil {
 		log.Error(err)
 	}
@@ -251,15 +261,28 @@ func (e *Exporter) Collect(ch chan<- prometheus.Metric) {
 		if nameDataMap["name"] == "Hadoop:service=NameNode,name=FSNamesystem" {
 			e.MissingBlocks.Set(nameDataMap["MissingBlocks"].(float64))
 			e.UnderReplicatedBlocks.Set(nameDataMap["UnderReplicatedBlocks"].(float64))
-			e.CapacityTotal.Set(nameDataMap["CapacityTotal"].(float64))
-			e.CapacityUsed.Set(nameDataMap["CapacityUsed"].(float64))
-			e.CapacityRemaining.Set(nameDataMap["CapacityRemaining"].(float64))
-			e.CapacityUsedNonDFS.Set(nameDataMap["CapacityUsedNonDFS"].(float64))
+			e.Capacity.WithLabelValues("Total").Set(nameDataMap["CapacityTotal"].(float64))
+			e.Capacity.WithLabelValues("Used").Set(nameDataMap["CapacityUsed"].(float64))
+			e.Capacity.WithLabelValues("Remaining").Set(nameDataMap["CapacityRemaining"].(float64))
+			e.Capacity.WithLabelValues("UsedNonDFS").Set(nameDataMap["CapacityUsedNonDFS"].(float64))
 			e.BlocksTotal.Set(nameDataMap["BlocksTotal"].(float64))
 			e.FilesTotal.Set(nameDataMap["FilesTotal"].(float64))
 			e.CorruptBlocks.Set(nameDataMap["CorruptBlocks"].(float64))
 			e.ExcessBlocks.Set(nameDataMap["ExcessBlocks"].(float64))
 			e.StaleDataNodes.Set(nameDataMap["StaleDataNodes"].(float64))
+
+			switch nameDataMap["tag.HAState"] {
+
+			case "initializing":
+				e.HAState.Set(0)
+			case "active":
+				e.HAState.Set(1)
+			case "standby":
+				e.HAState.Set(2)
+			case "stopping":
+				e.HAState.Set(3)
+
+			}
 		}
 		/*
 		   {
@@ -273,20 +296,52 @@ func (e *Exporter) Collect(ch chan<- prometheus.Metric) {
 		   }
 		*/
 		if nameDataMap["name"] == "Hadoop:service=NameNode,name=NameNodeStatus" {
-			if nameDataMap["State"] == "active" {
-				e.state.Set(1)
-			} else {
-				e.state.Set(0)
-			}
+
 			e.lastHATransitionTime.Set(nameDataMap["LastHATransitionTime"].(float64))
 		}
-		if nameDataMap["name"] == "java.lang:type=GarbageCollector,name=ParNew" {
-			e.pnGcCount.Set(nameDataMap["CollectionCount"].(float64))
-			e.pnGcTime.Set(nameDataMap["CollectionTime"].(float64))
-		}
-		if nameDataMap["name"] == "java.lang:type=GarbageCollector,name=ConcurrentMarkSweep" {
-			e.cmsGcCount.Set(nameDataMap["CollectionCount"].(float64))
-			e.cmsGcTime.Set(nameDataMap["CollectionTime"].(float64))
+		/*
+			{
+				"name": "Hadoop:service=NameNode,name=JvmMetrics",
+				"modelerType": "JvmMetrics",
+				"tag.Context": "jvm",
+				"tag.ProcessName": "NameNode",
+				"tag.SessionId": null,
+				"tag.Hostname": "osb002.example.com",
+				"MemNonHeapUsedM": 127.088585,
+				"MemNonHeapCommittedM": 129.57031,
+				"MemNonHeapMaxM": -1.0,
+				"MemHeapUsedM": 94972.38,
+				"MemHeapCommittedM": 152780.81,
+				"MemHeapMaxM": 152780.81,
+				"MemMaxM": 152780.81,
+				"GcCountParNew": 54800,
+				"GcTimeMillisParNew": 20067913,
+				"GcCountConcurrentMarkSweep": 13,
+				"GcTimeMillisConcurrentMarkSweep": 8184,
+				"GcCount": 54813,
+				"GcTimeMillis": 20076097,
+				"GcNumWarnThresholdExceeded": 1,
+				"GcNumInfoThresholdExceeded": 5,
+				"GcTotalExtraSleepTime": 8912336,
+				"ThreadsNew": 0,
+				"ThreadsRunnable": 8,
+				"ThreadsBlocked": 0,
+				"ThreadsWaiting": 13,
+				"ThreadsTimedWaiting": 936,
+				"ThreadsTerminated": 0,
+				"LogFatal": 0,
+				"LogError": 80332,
+				"LogWarn": 40327688,
+				"LogInfo": 1207922583
+			}
+		*/
+		if nameDataMap["name"] == "Hadoop:service=NameNode,name=JvmMetrics" {
+			e.GcCount.WithLabelValues("ParNew").Set(nameDataMap["GcCountParNew"].(float64))
+			e.GcCount.WithLabelValues("ConcurrentMarkSweep").Set(nameDataMap["GcCountConcurrentMarkSweep"].(float64))
+
+			e.GcTime.WithLabelValues("ParNew").Set(nameDataMap["GcTimeMillisParNew"].(float64))
+			e.GcTime.WithLabelValues("ConcurrentMarkSweep").Set(nameDataMap["GcTimeMillisConcurrentMarkSweep"].(float64))
+
 		}
 		/*
 		   "name" : "java.lang:type=Memory",
@@ -300,43 +355,80 @@ func (e *Exporter) Collect(ch chan<- prometheus.Metric) {
 		*/
 		if nameDataMap["name"] == "java.lang:type=Memory" {
 			heapMemoryUsage := nameDataMap["HeapMemoryUsage"].(map[string]interface{})
-			e.heapMemoryUsageCommitted.Set(heapMemoryUsage["committed"].(float64))
-			e.heapMemoryUsageInit.Set(heapMemoryUsage["init"].(float64))
-			e.heapMemoryUsageMax.Set(heapMemoryUsage["max"].(float64))
-			e.heapMemoryUsageUsed.Set(heapMemoryUsage["used"].(float64))
+			e.heapMemoryUsage.WithLabelValues("HeapMemoryUsage").Set(heapMemoryUsage["committed"].(float64))
+			e.heapMemoryUsage.WithLabelValues("init").Set(heapMemoryUsage["init"].(float64))
+			e.heapMemoryUsage.WithLabelValues("max").Set(heapMemoryUsage["max"].(float64))
+			e.heapMemoryUsage.WithLabelValues("used").Set(heapMemoryUsage["used"].(float64))
+		}
+
+		/*
+		   {
+		       "name": "Hadoop:service=NameNode,name=RpcActivityForPort8020",
+		       "modelerType": "RpcActivityForPort8020",
+		       "tag.port": "8020",
+		       "tag.Context": "rpc",
+		       "tag.NumOpenConnectionsPerUser": "{\"hive\":11,\"manas\":3,\"ossuser\":197,\"spark\":2,\"ambari-qa\":4,\"kafka\":1,\"hdfs\":53,\"yarn\":51,\"hbase\":50,\"mapred\":1}",
+		       "tag.Hostname": "osb002.example.com",
+		       "ReceivedBytes": 1505609759776,
+		       "SentBytes": 4366768779986,
+		       "RpcQueueTimeNumOps": 6291228413,
+		       "RpcQueueTimeAvgTime": 0.02962496060510558,
+		       "RpcProcessingTimeNumOps": 6291228413,
+		       "RpcProcessingTimeAvgTime": 0.12858493539237315,
+		       "RpcAuthenticationFailures": 638766,
+		       "RpcAuthenticationSuccesses": 49398112,
+		       "RpcAuthorizationFailures": 0,
+		       "RpcAuthorizationSuccesses": 49397832,
+		       "RpcClientBackoff": 0,
+		       "RpcSlowCalls": 0,
+		       "NumOpenConnections": 373,
+		       "CallQueueLength": 0
+		   },
+		*/
+		if strings.HasPrefix(nameDataMap["modelerType"].(string), "RpcActivityForPort") {
+
+			port := nameDataMap["tag.port"].(string)
+
+			e.RpcReceivedBytes.WithLabelValues(port).Set(nameDataMap["ReceivedBytes"].(float64))
+			e.RpcSentBytes.WithLabelValues(port).Set(nameDataMap["SentBytes"].(float64))
+			e.RpcQueueTimeNumOps.WithLabelValues(port, "QueueTime").Set(nameDataMap["RpcQueueTimeNumOps"].(float64))
+			e.RpcAvgTime.WithLabelValues(port, "RpcQueueTime").Set(nameDataMap["RpcQueueTimeAvgTime"].(float64))
+			e.RpcAvgTime.WithLabelValues(port, "RpcProcessingTime").Set(nameDataMap["RpcProcessingTimeAvgTime"].(float64))
+			e.RpcNumOpenConnections.WithLabelValues(port).Set(nameDataMap["NumOpenConnections"].(float64))
+			e.RpcCallQueueLength.WithLabelValues(port).Set(nameDataMap["CallQueueLength"].(float64))
 		}
 	}
+
 	e.MissingBlocks.Collect(ch)
 	e.UnderReplicatedBlocks.Collect(ch)
-	e.CapacityTotal.Collect(ch)
-	e.CapacityUsed.Collect(ch)
-	e.CapacityRemaining.Collect(ch)
-	e.CapacityUsedNonDFS.Collect(ch)
+	e.Capacity.Collect(ch)
 	e.BlocksTotal.Collect(ch)
 	e.FilesTotal.Collect(ch)
 	e.CorruptBlocks.Collect(ch)
 	e.ExcessBlocks.Collect(ch)
 	e.StaleDataNodes.Collect(ch)
-	e.pnGcCount.Collect(ch)
-	e.pnGcTime.Collect(ch)
-	e.cmsGcCount.Collect(ch)
-	e.cmsGcTime.Collect(ch)
-	e.heapMemoryUsageCommitted.Collect(ch)
-	e.heapMemoryUsageInit.Collect(ch)
-	e.heapMemoryUsageMax.Collect(ch)
-	e.heapMemoryUsageUsed.Collect(ch)
+	e.GcCount.Collect(ch)
+	e.GcTime.Collect(ch)
+	e.heapMemoryUsage.Collect(ch)
 	e.lastHATransitionTime.Collect(ch)
-	e.state.Collect(ch)
+	e.HAState.Collect(ch)
+	e.RpcReceivedBytes.Collect(ch)
+	e.RpcSentBytes.Collect(ch)
+	e.RpcQueueTimeNumOps.Collect(ch)
+	e.RpcAvgTime.Collect(ch)
+	e.RpcNumOpenConnections.Collect(ch)
+	e.RpcCallQueueLength.Collect(ch)
 }
 
 func main() {
+
 	flag.Parse()
 
 	exporter := NewExporter(*namenodeJmxUrl)
 	prometheus.MustRegister(exporter)
 
 	log.Printf("Starting Server: %s", *listenAddress)
-	http.Handle(*metricsPath, prometheus.Handler())
+	http.Handle(*metricsPath, promhttp.Handler())
 	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 		w.Write([]byte(`<html>
         <head><title>NameNode Exporter</title></head>
