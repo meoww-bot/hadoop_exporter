@@ -3,9 +3,16 @@ Exports hadoop metrics via HTTP for Prometheus consumption.
 
 How to build
 ```
-glide install
-go build namenode_exporter.go
-go build resourcemanager_exporter.go
+go mod tidy
+make build
+```
+
+or build individual exporter
+```
+make build-namenode
+make build-resourcemanager
+make build-journalnode 
+make build-datanode
 ```
 
 Help on flags of namenode_exporter:
@@ -49,5 +56,4 @@ Help on flags of journalnode_exporter:
 ```
 
 # Requirements
-go lang 1.6.2
-glide
+golang 1.20
