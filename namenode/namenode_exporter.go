@@ -16,14 +16,14 @@ import (
 )
 
 const (
-	namespace = "hadoop_hdfs_namenode"
+	namespace = "hdfs_namenode"
 )
 
 var (
 	listenAddress  = flag.String("web.listen-address", ":9070", "Address on which to expose metrics and web interface.")
 	metricsPath    = flag.String("web.telemetry-path", "/metrics", "Path under which to expose metrics.")
 	namenodeJmxUrl = flag.String("namenode.jmx.url", "http://nn01.example.com:50070/jmx", "Hadoop JMX URL.")
-	keytabPath     = flag.String("krb5.keytabpath", "", "Kerberos keytab file path")
+	keytabPath     = flag.String("krb5.keytab.path", "", "Kerberos keytab file path")
 	principal      = flag.String("krb5.principal", "", "Principal (admin@EXAMPLE.COM)")
 )
 
@@ -121,7 +121,7 @@ func NewExporter(url string, keytabPath string, principal string) *Exporter {
 		heapMemoryUsage: prometheus.NewGaugeVec(prometheus.GaugeOpts{
 			Namespace: namespace,
 			Subsystem: "mem",
-			Name:      "committed_bytes",
+			Name:      "heap_memory_usage_bytes",
 			Help:      "Current heap memory of each mode in bytes",
 		}, []string{"mode"}),
 		lastHATransitionTime: prometheus.NewGauge(prometheus.GaugeOpts{
