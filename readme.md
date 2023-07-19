@@ -90,20 +90,20 @@ Help on flags of journalnode_exporter:
 
 |Jmx Metric|Prometheus Metric|Description|Chinese Description|
 |-|-|-|-|
-|GcCountParNew|hdfs_namenode_jvm_gc_count{type="ParNew"}|ParNew GC count
-|GcCountConcurrentMarkSweep|hdfs_namenode_jvm_gc_count{type="ConcurrentMarkSweep"}|ConcurrentMarkSweep GC count
-|GcTimeMillisParNew|hdfs_namenode_jvm_gc_time_milliseconds{type="ParNew"}|ParNew GC time in milliseconds
-|GcTimeMillisConcurrentMarkSweep|hdfs_namenode_jvm_gc_time_milliseconds{type="ConcurrentMarkSweep"}|ConcurrentMarkSweep GC time in milliseconds
+|GcCountParNew|hdfs_namenode_jvm_metrics_gc_count{type="ParNew"}|ParNew GC count
+|GcCountConcurrentMarkSweep|hdfs_namenode_jvm_metrics_gc_count{type="ConcurrentMarkSweep"}|ConcurrentMarkSweep GC count
+|GcTimeMillisParNew|hdfs_namenode_jvm_metrics_gc_time_milliseconds{type="ParNew"}|ParNew GC time in milliseconds
+|GcTimeMillisConcurrentMarkSweep|hdfs_namenode_jvm_metrics_gc_time_milliseconds{type="ConcurrentMarkSweep"}|ConcurrentMarkSweep GC time in milliseconds
 
 
 #### java.lang:type=Memory
 
 |Jmx Metric|Prometheus Metric|Description|Chinese Description|
 |-|-|-|-|
-|HeapMemoryUsage{committed}|hdfs_namenode_mem_heap_memory_usage_bytes{mode="committed"}|
-|HeapMemoryUsage{init}|hdfs_namenode_mem_heap_memory_usage_bytes{mode="init"}|
-|HeapMemoryUsage{max}|hdfs_namenode_mem_heap_memory_usage_bytes{mode="max"}|
-|HeapMemoryUsage{used}|hdfs_namenode_mem_heap_memory_usage_bytes{mode="used"}|
+|HeapMemoryUsage{committed}|hdfs_namenode_memory_heap_memory_usage_bytes{mode="committed"}|
+|HeapMemoryUsage{init}|hdfs_namenode_memory_heap_memory_usage_bytes{mode="init"}|
+|HeapMemoryUsage{max}|hdfs_namenode_memory_heap_memory_usage_bytes{mode="max"}|
+|HeapMemoryUsage{used}|hdfs_namenode_memory_heap_memory_usage_bytes{mode="used"}|
 
 #### Hadoop:service=NameNode,name=NameNodeStatus
 
@@ -116,13 +116,13 @@ Help on flags of journalnode_exporter:
 
 |Jmx Metric|Prometheus Metric|Description|Chinese Description|
 |-|-|-|-|
-|ReceivedBytes|hdfs_namenode_rpc_received_bytes|Total number of received bytes
-|SentBytes|hdfs_namenode_rpc_sent_bytes|Total number of sent bytes
-|RpcQueueTimeNumOps|hdfs_namenode_rpc_call_count{method="QueueTime"}|Total number of RPC calls 
-|RpcQueueTimeAvgTime|hdfs_namenode_rpc_avg_time_milliseconds{method="RpcQueueTime"}|Average queue time in milliseconds 
-|RpcProcessingTimeAvgTime|hdfs_namenode_rpc_avg_time_milliseconds{method="RpcProcessingTime"}|Average Processing time in milliseconds
-|NumOpenConnections|hdfs_namenode_rpc_open_connections_count|Current number of open connections
-|CallQueueLength|hdfs_namenode_rpc_call_queue_length|Current length of the call queue
+|ReceivedBytes|hdfs_namenode_rpc_activity_received_bytes|Total number of received bytes
+|SentBytes|hdfs_namenode_rpc_activity_sent_bytes|Total number of sent bytes
+|RpcQueueTimeNumOps|hdfs_namenode_rpc_activity_call_count{method="QueueTime"}|Total number of RPC calls 
+|RpcQueueTimeAvgTime|hdfs_namenode_rpc_activity_avg_time_milliseconds{method="RpcQueueTime"}|Average queue time in milliseconds 
+|RpcProcessingTimeAvgTime|hdfs_namenode_rpc_activity_avg_time_milliseconds{method="RpcProcessingTime"}|Average Processing time in milliseconds
+|NumOpenConnections|hdfs_namenode_rpc_activity_open_connections_count|Current number of open connections
+|CallQueueLength|hdfs_namenode_rpc_activity_call_queue_length|Current length of the call queue
 
 
 
