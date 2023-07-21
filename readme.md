@@ -70,11 +70,11 @@ Help on flags of journalnode_exporter:
 
 1. 将同一指标的不同维度放到标签里面，降低基数
 2. 指标定义： `<hadoop service>_<component>_<jmx beans modelerType>_<metrics>`
-   比如：BlocksTotal 对应的 prometheus 指标 `hdfs_namenode_fsname_system_blocks_total`
-        hadoop service: hdfs
-        component: namenode
-        jmx beans modelerType: FSNamesystem -> fsname_system
-        metrics: BlocksTotal -> blocks_total
+   比如：BlocksTotal 对应的 prometheus 指标 `hdfs_namenode_fsname_system_blocks_total`  
+        hadoop service: hdfs  
+        component: namenode  
+        jmx beans modelerType: FSNamesystem -> fsname_system  
+        metrics: BlocksTotal -> blocks_total  
 3. prometheus 指标全部是小写字母，使用 `_` 下划线分隔
 4. 如果指标有单位，尽量带单位，比如 count，millisecond，bytes
 

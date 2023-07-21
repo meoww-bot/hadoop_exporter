@@ -16,7 +16,12 @@ import (
 )
 
 const (
-	namespace = "hdfs_namenode"
+	namespace      = "hdfs_namenode"
+	FSNameSystem   = "fsname_system"
+	JvmMetrics     = "jvm_metrics"
+	RpcActivity    = "rpc_activity"
+	Memory         = "memory"
+	NamenodeStatus = "namenode_status"
 )
 
 var (
@@ -60,79 +65,79 @@ func NewExporter(url string, keytabPath string, principal string) *Exporter {
 		principal:  principal,
 		MissingBlocks: prometheus.NewGauge(prometheus.GaugeOpts{
 			Namespace: namespace,
-			Subsystem: "fsname_system",
+			Subsystem: FSNameSystem,
 			Name:      "missing_blocks",
 			Help:      "Current number of missing blocks",
 		}),
 		UnderReplicatedBlocks: prometheus.NewGauge(prometheus.GaugeOpts{
 			Namespace: namespace,
-			Subsystem: "fsname_system",
+			Subsystem: FSNameSystem,
 			Name:      "under_replicated_blocks",
 			Help:      "Current number of blocks under replicated",
 		}),
 		Capacity: prometheus.NewGaugeVec(prometheus.GaugeOpts{
 			Namespace: namespace,
-			Subsystem: "fsname_system",
+			Subsystem: FSNameSystem,
 			Name:      "capacity_bytes",
 			Help:      "Current DataNodes capacity in each mode in bytes",
 		}, []string{"mode"}),
 		BlocksTotal: prometheus.NewGauge(prometheus.GaugeOpts{
 			Namespace: namespace,
-			Subsystem: "fsname_system",
+			Subsystem: FSNameSystem,
 			Name:      "blocks_total",
 			Help:      "Current number of allocated blocks in the system",
 		}),
 		FilesTotal: prometheus.NewGauge(prometheus.GaugeOpts{
 			Namespace: namespace,
-			Subsystem: "fsname_system",
+			Subsystem: FSNameSystem,
 			Name:      "files_total",
 			Help:      "Current number of files and directories",
 		}),
 		CorruptBlocks: prometheus.NewGauge(prometheus.GaugeOpts{
 			Namespace: namespace,
-			Subsystem: "fsname_system",
+			Subsystem: FSNameSystem,
 			Name:      "corrupt_blocks",
 			Help:      "Current number of blocks with corrupt replicas",
 		}),
 		ExcessBlocks: prometheus.NewGauge(prometheus.GaugeOpts{
 			Namespace: namespace,
-			Subsystem: "fsname_system",
+			Subsystem: FSNameSystem,
 			Name:      "excess_blocks",
 			Help:      "Current number of excess blocks",
 		}),
 		StaleDataNodes: prometheus.NewGauge(prometheus.GaugeOpts{
 			Namespace: namespace,
-			Subsystem: "fsname_system",
+			Subsystem: FSNameSystem,
 			Name:      "stale_datanodes",
 			Help:      "Current number of DataNodes marked stale due to delayed heartbeat",
 		}),
 		GcCount: prometheus.NewGaugeVec(prometheus.GaugeOpts{
 			Namespace: namespace,
-			Subsystem: "jvm_metrics",
+			Subsystem: JvmMetrics,
 			Name:      "gc_count",
 			Help:      "GC count of each type",
 		}, []string{"type"}),
 		GcTime: prometheus.NewGaugeVec(prometheus.GaugeOpts{
 			Namespace: namespace,
-			Subsystem: "jvm_metrics",
+			Subsystem: JvmMetrics,
 			Name:      "gc_time_milliseconds",
 			Help:      "GC time of each type in milliseconds",
 		}, []string{"type"}),
 		heapMemoryUsage: prometheus.NewGaugeVec(prometheus.GaugeOpts{
 			Namespace: namespace,
-			Subsystem: "memory",
+			Subsystem: Memory,
 			Name:      "heap_memory_usage_bytes",
 			Help:      "Current heap memory of each mode in bytes",
 		}, []string{"mode"}),
 		lastHATransitionTime: prometheus.NewGauge(prometheus.GaugeOpts{
 			Namespace: namespace,
-			Subsystem: "namenode_status",
+			Subsystem: NamenodeStatus,
 			Name:      "last_ha_transition_time",
 			Help:      "last HA Transition Time",
 		}),
 		HAState: prometheus.NewGauge(prometheus.GaugeOpts{
 			Namespace: namespace,
-			Subsystem: "fsname_system",
+			Subsystem: FSNameSystem,
 			Name:      "hastate",
 			Help:      "Current state of the NameNode: 0.0 (for initializing) or 1.0 (for active) or 2.0 (for standby) or 3.0 (for stopping) state",
 		}),
@@ -140,37 +145,37 @@ func NewExporter(url string, keytabPath string, principal string) *Exporter {
 		// RpcActivityForPort8060
 		RpcReceivedBytes: prometheus.NewGaugeVec(prometheus.GaugeOpts{
 			Namespace: namespace,
-			Subsystem: "rpc_activity",
+			Subsystem: RpcActivity,
 			Name:      "received_bytes",
 			Help:      "Total number of received bytes",
 		}, []string{"port"}),
 		RpcSentBytes: prometheus.NewGaugeVec(prometheus.GaugeOpts{
 			Namespace: namespace,
-			Subsystem: "rpc_activity",
+			Subsystem: RpcActivity,
 			Name:      "sent_bytes",
 			Help:      "Total number of sent bytes",
 		}, []string{"port"}),
 		RpcQueueTimeNumOps: prometheus.NewGaugeVec(prometheus.GaugeOpts{
 			Namespace: namespace,
-			Subsystem: "rpc_activity",
+			Subsystem: RpcActivity,
 			Name:      "call_count",
 			Help:      "Total number of RPC calls (same to RpcQueueTimeNumOps) ",
 		}, []string{"port", "method"}),
 		RpcAvgTime: prometheus.NewGaugeVec(prometheus.GaugeOpts{
 			Namespace: namespace,
-			Subsystem: "rpc_activity",
+			Subsystem: RpcActivity,
 			Name:      "avg_time_milliseconds",
 			Help:      "current number of open connections",
 		}, []string{"port", "method"}),
 		RpcNumOpenConnections: prometheus.NewGaugeVec(prometheus.GaugeOpts{
 			Namespace: namespace,
-			Subsystem: "rpc_activity",
+			Subsystem: RpcActivity,
 			Name:      "open_connections_count",
 			Help:      "current number of open connections",
 		}, []string{"port"}),
 		RpcCallQueueLength: prometheus.NewGaugeVec(prometheus.GaugeOpts{
 			Namespace: namespace,
-			Subsystem: "rpc_activity",
+			Subsystem: RpcActivity,
 			Name:      "call_queue_length",
 			Help:      "Current length of the call queue",
 		}, []string{"port"}),
